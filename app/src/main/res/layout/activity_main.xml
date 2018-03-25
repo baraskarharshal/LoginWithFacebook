@@ -12,12 +12,6 @@
         android:orientation="vertical"
         >
 
-        <Button
-            android:id="@+id/getHash"
-            android:text="get Hash"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
         <com.facebook.login.widget.LoginButton
             android:id="@+id/login_button"
             android:layout_margin="15dp"

@@ -1,60 +1,99 @@
 package com.apps.rdjsmartapps.loginwithfacebook;
 
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.Signature;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
+import android.widget.Toast;
 
+import com.facebook.AccessToken;
+import com.facebook.AccessTokenTracker;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
+import com.facebook.Profile;
+import com.facebook.ProfileTracker;
 import com.facebook.appevents.AppEventsLogger;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
 
 public class MainActivity extends AppCompatActivity {
 
-    Button getHash;
+    LoginButton loginButton;
+    CallbackManager callbackManager;
+    private AccessTokenTracker accessTokenTracker;
+    private ProfileTracker profileTracker;
+
+    private static final String EMAIL = "email";
+    private static final String TAG = "MyActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        getHash = (Button) findViewById(R.id.getHash);
+        loginButton = (LoginButton) findViewById(R.id.login_button);
+        callbackManager = CallbackManager.Factory.create();
 
-        getHash.setOnClickListener(new View.OnClickListener() {
+        accessTokenTracker = new AccessTokenTracker() {
             @Override
-            public void onClick(View view) {
-                getKeyHash();
+            protected void onCurrentAccessTokenChanged(AccessToken oldToken, AccessToken newToken) {
+                // do something
+            }
+        };
+
+        profileTracker = new ProfileTracker() {
+            @Override
+            protected void onCurrentProfileChanged(Profile oldProfile, Profile newProfile) {
+                displayProfile(newProfile);
+            }
+        };
+        accessTokenTracker.startTracking();
+        profileTracker.startTracking();
+
+
+        loginButton.setReadPermissions("email", "public_profile");
+        // If you are using in a fragment, call loginButton.setFragment(this);
+
+        // Callback registration
+        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+
+                Profile profile = Profile.getCurrentProfile();
+                displayProfile(profile);
+                Toast.makeText(getApplicationContext(), "Logging in...", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCancel() {
+                // App code
+            }
+
+            @Override
+            public void onError(FacebookException exception) {
+                // App code
             }
         });
 
+    } // end of onCreate
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        callbackManager.onActivityResult(requestCode, resultCode, data);
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void getKeyHash() {
+    void displayProfile(Profile profile){
+        if(profile != null){
+            Intent profileIntent = new Intent(MainActivity.this, ProfileActivity.class);
+            profileIntent.putExtra("id", profile.getId());
+            profileIntent.putExtra("first_name", profile.getFirstName());
+            profileIntent.putExtra("last_name", profile.getLastName());
 
-        PackageInfo info;
-        try {
-            info = getPackageManager().getPackageInfo("com.apps.rdjsmartapps.loginwithfacebook", PackageManager.GET_SIGNATURES);
-            for (Signature signature : info.signatures) {
-                MessageDigest md;
-                md = MessageDigest.getInstance("SHA");
-                md.update(signature.toByteArray());
-                String something = new String(Base64.encode(md.digest(), 0));
-                //String something = new String(Base64.encodeBytes(md.digest()));
-                Log.e("hash key", something);
-            }
-        } catch (PackageManager.NameNotFoundException e1) {
-            Log.e("name not found", e1.toString());
-        } catch (NoSuchAlgorithmException e) {
-            Log.e("no such an algorithm", e.toString());
-        } catch (Exception e) {
-            Log.e("exception", e.toString());
+            profileIntent.putExtra("imageUrl", profile.getProfilePictureUri(200,200).toString());
+            startActivity(profileIntent);
         }
     }
 }
